@@ -29,5 +29,5 @@ app.use("/games", games);
 
 initializeSocketIO(server);
 server.listen(port, () => {
-    console.log("Server running at ")
+    console.info("Server running at ")
 })

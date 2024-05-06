@@ -4,63 +4,127 @@ const Player = require("../data/models/player");
 const Game = require("../data/models/game");
 
 async function startGame(io, socket, data){
-    const deck = await createDeck(data);
+    const deck = await createDeck();
+    const blackCards = deck.filter(card => card.Type === 'B');
+    const blackCardsUpdated = await generateBlackCard(blackCards);
     await insertPlayerHand(deck, data);
     const game = await Game.findAll({where : {RoomId : data.roomId}});
-    console.log("Stat ga", game)
-    data = {
-        game : game
+    const dataGame = {
+        game : game,
+        blackCards : blackCardsUpdated.blackCards,
+        blackCard : blackCardsUpdated.blackCard
     }
-    /*
-    const playersHand = await getPlayersHand(data);
-    const gameData = {
-        playersHand : playersHand,
-    }
-    players.forEach(player => {
-        console.log("Player:", player.dataValues);
-        console.log("Hands:");
-        player.Hands.forEach(hand => {
-            console.log(hand.dataValues);
-        });
-    });
-    //socket.emit("current-player-hand", socketData);
-     */
-    socket.emit("game-started", data);
-    io.to(data.roomId).emit("game-started", data);
+    io.to(data.roomId).emit("game-started", dataGame);
 }
 async function createDeck() {
     const cards = await Card.findAll();
+    const whiteCards = cards.filter(card => card.Type === 'W');
+    const blackCards = cards.filter(card => card.Type === 'B');
     const deck = [];
-
-    for(let i = 0; i < 5; i++){
-        const ranIndex = Math.floor(Math.random() * 5);
-        //console.log("RanIndex", ranIndex);
-        //console.log("Cards", cards[ranIndex]);
-        deck.push(cards[ranIndex]);
-        cards.splice(ranIndex, 1);
+    for(let i = 0; i < cards.length - blackCards.length; i++){
+        if(blackCards.length > (cards.length / 4)){
+            const ranIndex = Math.floor(Math.random() * blackCards.length);
+            deck.push(blackCards[ranIndex]);
+            blackCards.splice(ranIndex, 1);
+        }else{
+            const ranIndex = Math.floor(Math.random() * whiteCards.length);
+            deck.push(whiteCards[ranIndex]);
+            whiteCards.splice(ranIndex, 1);
+        }
     }
-
     return deck;
 }
 
 async function insertPlayerHand(deck, data) {
-    let cardByPlayer = Math.floor(deck.length / data.players.length);
+    let cardsWhite = deck.filter(card => card.Type === 'W');
+    let cardByPlayer = Math.floor(cardsWhite.length / data.players.length);
     for (const p of data.players) {
         for(let i = 0; i < cardByPlayer; i++){
-            const currentCardId = deck[i].Id;
+            const currentCardId = cardsWhite[i].Id;
             await Hand.create({CardId : currentCardId, PlayerId : p.Id});
         }
-        deck.splice(0,cardByPlayer);
+        cardsWhite.splice(0,cardByPlayer);
     }
 }
 
-async function getPlayersHand(data) {
-    const playersIds = data.players.map(p => p.Id);
-
-    return await Player.findAll({
-        where : {Id : playersIds},
-        include : Hand
-    });
+async function getCardsPlayed(io, socket ,data) {
+    io.to(data.roomId).emit("cards-played", data);
 }
 
-module.exports = {startGame};
+async function manageWinner(io, socket ,data){
+    console.log("*****Winner INFO*******", data);
+    //await updateWinner(data);
+    //await updateJudge(data);
+    io.to(data.roomId).emit("winner-info", data);
+}
+
+async function startTimer(io, socket, data){
+    setTimeout(() => {
+        if(data.timer > 0){
+            data.timer--;
+            io.to(data.roomId).emit("timer-update", data.timer);
+            startTimer(io, socket, data);
+        }
+    }, 1000);
+}
+
+async function generateBlackCard(blackCards) {
+    const ranIndex = Math.floor(Math.random());
+    const data = {
+        blackCard: blackCards[ranIndex],
+        blackCards: blackCards
+    };
+    data.blackCards.splice(ranIndex, 1);
+    return data;
+}
+
+async function joinRoundRoom(io, socket, data) {
+    console.log("DATA£££", data)
+    io.to(data.roomId).emit("round-room-joined", data);
+}
+
+async function updateWinner(data){
+    const player = await getPlayerByCardId(data);
+    const scorePlayer = player.Score = 50;
+    player.set({ Score : scorePlayer, IsJudge : 1 });
+    await player.save();
+}
+
+async function getPlayerByCardId(data){
+    const hand = await Hand.findOne({
+        where : {CardId : data.winnerCard.Id, PlayerId : data.winner.Id},
+        include : Player
+    });
+    return hand.Player;
+}
+
+async function updateJudge(data) {
+    const player = await Player.findOne({
+        where : {Id : data.currentPlayer.Id}
+    });
+    player.set({IsJudge : 0});
+    await player.save();
+}
+
+async function displayWinner(io, socket, data){
+    io.to(data.roomId).emit("winner-info", data);
+}
+
+async function updateRound(io, socket, data) {
+    await updateWinner(data);
+    await updateJudge(data);
+    const roundData = false;
+    console.log("Data", roundData);
+    setTimeout(() => {
+        io.to(data.roomId).emit("round-updated", roundData);
+    }, 4000);
+}
+
+async function nextTurn(io, socket, data) {
+    data.timer = 5;
+    let blackCardData = await generateBlackCard(data.blackCards);
+    await startTimer(io, socket, data);
+    io.to(data.roomId).emit("new-turn", blackCardData);
+}
+
+module.exports = {manageWinner,startGame, getCardsPlayed, startTimer, nextTurn, joinRoundRoom, displayWinner, updateRound};

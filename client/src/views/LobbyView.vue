@@ -34,15 +34,19 @@ export default {
     }
   },
   mounted() {
+    socket.on("connect", () => {
+      const data = {
+        roomId : this.roomId
+      }
+      socket.emit('reconnect-player', data);
+    });
     socket.on("player-joined", (data: { player : Player, usersInRoom : Player[] }) => {
-      console.log("player-joined dans player joined", this.currentPlayer.IsAdmin)
       this.players = data.usersInRoom;
     });
     socket.on("current-player-joined", (data : {player : Player, usersInRoom : any[]}) => {
       this.currentPlayer = data.player;
     });
-    socket.on("player-redirected", (data : { roomId : string }) => {
-      console.log("Redirecting", this.roomId);
+    socket.on("player-redirected", (data : { roomId : string}) => {
       this.$router.push({name : 'board', params : { roomId : this.roomId, socketId : socket.id}});
     });
     this.fetchData();
@@ -54,9 +58,9 @@ export default {
         players : this.players,
         currentPlayer : this.currentPlayer
       }
-      socket.emit("redirect-player", data.roomId);
+
       socket.emit("start-game", data);
-      this.$router.push({name : 'board', params : { roomId : this.roomId, socketId : socket.id}});
+      socket.emit("redirect-player", data);
     },
     async fetchData() {
       try {

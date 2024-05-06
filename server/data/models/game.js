@@ -1,4 +1,5 @@
 const {Model, DataTypes} = require('sequelize');
+const Turn = require("./turn");
 class Game extends Model{
     static async init (sequelizeInstance) {
         super.init({
@@ -14,14 +15,17 @@ class Game extends Model{
             },
             CurrentTurnId: {
                 type: DataTypes.INTEGER,
-                allowNull: false,
+                references: {
+                    model: Turn,
+                    key: 'Id',
+                    foreignKey : true
+                }
             }
         }, {
             sequelize: sequelizeInstance,
             modelName: 'Game',
             freezeTableName: true,
             timestamps: false
-
         });
         await super.sync()
     }

@@ -53,8 +53,7 @@ export default {
   },
   mounted() {
     socket.on("connect", () => {
-      console.log("Client", socket.id);
-    })
+    });
   }
 }
 </script>

@@ -5,5 +5,7 @@ export interface Player {
     SocketId : string;
     Name : string;
     IsAdmin : boolean;
+    IsJudge : boolean;
+    Score : number;
     Hands : Hand[];
 }

@@ -23,6 +23,10 @@ class Player extends Model{
             Score: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
+            },
+            IsJudge : {
+                type: DataTypes.BOOLEAN,
+                allowNull: false
             }
         }, {
             sequelize: sequelizeInstance,

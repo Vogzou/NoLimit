@@ -16,10 +16,11 @@ const props = defineProps<{
 .white-card {
   background-color: #FFFFFF;
   height: 240px;
-  min-width: 160px;
+  width: 180px;
   border-radius: 10px;
   transform: translateY(0);
   transition: ease-out 0.2s;
+  margin: 0 0.5em 0 0.5em;
 }
 
 .white-card:hover{

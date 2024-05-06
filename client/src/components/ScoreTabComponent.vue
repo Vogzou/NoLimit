@@ -2,7 +2,7 @@
   <div class="tab">
     <div class="player-info">
       <p>{{ player.Name }}</p>
-      <p class="subText">{{ player.IsAdmin }}</p>
+      <p class="subText">{{ player.Score }}</p>
     </div>
     <div class="player-kick">
       <button>Kick</button>

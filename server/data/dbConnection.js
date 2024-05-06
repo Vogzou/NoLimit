@@ -33,10 +33,10 @@ class DbConnection{
                 Player.belongsToMany(Game, {through : 'PlayerGame'});
                 Game.belongsToMany(Player, {through : 'PlayerGame'});
 
-                console.log('Connecté à la base');
+                console.info('Connecté à la base');
             });
         } catch (error) {
-            console.log('Connexion impossible à la base: ', error);
+            console.warn('Connexion impossible à la base: ', error);
         }
     }
 }

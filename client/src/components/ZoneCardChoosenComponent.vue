@@ -7,6 +7,9 @@
 <style scoped>
 
 .zone-card {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   height: 300px;
   min-width: 215px;
   border: 4px dashed var(--color-background-ter-game);

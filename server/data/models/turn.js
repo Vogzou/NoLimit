@@ -13,16 +13,19 @@ class Turn extends Model {
             BlackCardId: {
                 type: DataTypes.INTEGER,
                 references: {
-                    model: Card, // 'Movies' would also work
-                    key: 'id',
+                    model: Card,
+                    key: 'Id',
                     foreignKey : true
                 }
+            },
+            TurnId: {
+                type: DataTypes.INTEGER,
             },
             WinnerId: {
                 type: DataTypes.INTEGER,
                 references: {
-                    model: Player, // 'Movies' would also work
-                    key: 'id',
+                    model: Player,
+                    key: 'Id',
                     foreignKey : true
                 }
             },
@@ -31,7 +34,6 @@ class Turn extends Model {
             modelName: 'Turn',
             freezeTableName: true,
             timestamps: false
-
         });
         await super.sync()
 

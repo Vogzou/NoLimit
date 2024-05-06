@@ -9,15 +9,19 @@ router.get("/" , (req, res)=> {
     res.status(200).json({message : "Tous les utilisateurs"});
 });
 router.get("/:roomId", async (req,res) => {
-    const roomId = req.params.roomId;
-    const game = await Game.findOne({where : {RoomId : roomId}});
-    const gamePlayers = await PlayerGame.findAll({where : {GameId : game.Id}});
-    const playersIds = gamePlayers.map(p => p.PlayerId);
-    const players = await Player.findAll({
-        where : {Id : playersIds},
-        include : Hand
-    });
-    res.status(200).json({players: players});
+    try{
+        const roomId = req.params.roomId;
+        const game = await Game.findOne({where : {RoomId : roomId}});
+        const gamePlayers = await PlayerGame.findAll({where : {GameId : game.Id}});
+        const playersIds = gamePlayers.map(p => p.PlayerId);
+        const players = await Player.findAll({
+            where : {Id : playersIds},
+            include : Hand
+        });
+        res.status(200).json({players: players});
+    }catch (e){
+        console.error("Problème dans la route user", e);
+    }
 });
 router.get("/currentUser/:socketId", async (req,res) => {
     const socketId = req.params.socketId;

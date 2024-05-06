@@ -1,6 +1,6 @@
 <template>
   <div class="black-card">
-    <p>Je péfère</p>
+    <p>{{card.Description}}</p>
     <p>______</p>
   </div>
 </template>
@@ -10,7 +10,7 @@
 .black-card {
   background-color: black;
   height: 300px;
-  min-width: 215px;
+  width: 240px;
   border-radius: 10px;
 }
 
@@ -21,4 +21,9 @@ p{
 
 </style>
 <script setup lang="ts">
+import type {Card} from "@/models/Card";
+
+const props = defineProps<{
+  card : Card;
+}>();
 </script>
