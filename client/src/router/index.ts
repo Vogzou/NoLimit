@@ -31,11 +31,12 @@ const router = createRouter({
       }
     },
     {
-      path: '/round/:roomId/',
+      path: '/round/:roomId/:socketId',
       name: 'round',
       component: RoundStatView,
       props : {
-        roomId : String
+        roomId : String,
+        socketId : String
       }
     }
   ]

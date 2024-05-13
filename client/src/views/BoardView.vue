@@ -15,15 +15,16 @@
           <h3 v-if="playerTurnFinished">Le juge choisit le gagnant du tour</h3>
         </div>
         <div class="room-leave-btn">
-          <button>Leave room</button>
-          <button v-if="currentPlayer.IsJudge" @click="nextTurn()">Next turn</button>
+          <button @click="onDisconnect()">Leave room</button>
         </div>
       </div>
       <div class="game-board">
         <div class="game-board-cards-fix">
           <BlackCardComponent :card="currentBlackCard"></BlackCardComponent>
-          <button v-if="currentPlayer.IsJudge && playerTurnFinished" @click="confirmWinCard()">Choisir carte gagnante</button>
-          <ZoneCardChoosenComponent v-if="!currentPlayer.IsJudge" :card="chosenCard"></ZoneCardChoosenComponent>
+          <div class="card-chosen">
+            <ZoneCardChoosenComponent v-if="currentPlayer.IsJudge" :card="winCard"></ZoneCardChoosenComponent>
+            <button v-if="currentPlayer.IsJudge && playerTurnFinished" @click="confirmWinCard()" class="btn-valid">Choisir</button>
+          </div>
         </div>
         <div class="game-board-cards-scrollable">
           <WhiteCardComponent v-for="card in cardsPlayed" :key="card.Id" :card="card" @click="currentPlayer.IsJudge ? winnerCardSelected(card) : null"></WhiteCardComponent>
@@ -49,14 +50,16 @@
           <h3 v-if="playerTurnFinished">Le juge choisit le gagnant du tour</h3>
         </div>
         <div class="room-leave-btn">
-          <button>Leave room</button>
+          <button @click="onDisconnect()">Leave room</button>
         </div>
       </div>
       <div class="game-board">
         <div class="game-board-cards-fix">
           <BlackCardComponent :card="currentBlackCard"></BlackCardComponent>
-          <button v-if="!currentPlayer.IsJudge && !playerTurnFinished" @click="confirmCardPlayed()">Valider</button>
-          <ZoneCardChoosenComponent v-if="!currentPlayer.IsJudge" :card="chosenCard"></ZoneCardChoosenComponent>
+          <div class="card-chosen">
+            <ZoneCardChoosenComponent v-if="!currentPlayer.IsJudge" :card="chosenCard"></ZoneCardChoosenComponent>
+            <button v-if="!currentPlayer.IsJudge && !playerTurnFinished" @click="confirmCardPlayed()" class="btn-valid">Valider</button>
+          </div>
         </div>
         <div class="game-board-cards-scrollable">
           <WhiteCardComponent v-for="card in cardsPlayed" :key="card.Id" :card="card" @click="currentPlayer.IsJudge ? winnerCardSelected(card) : null"></WhiteCardComponent>
@@ -111,41 +114,32 @@ export default {
       winCard : {} as Card,
 
       //Gestion du tour
-      timerCount : 5,
+      timerCount : 10,
       playerTurnFinished : false
     }
   },
-  mounted() {
-
+  created() {
     this.onReconnectPlayer();
-    this.startGame();
     this.fetchData();
+    this.startGame();
     this.onCardsPlayed();
     this.onTimerUpdate();
-
-    socket.on("round-room-joined", (data : { roomId : string, winCard : Card }) => {
-      const winner : Player | undefined = this.players.find((p : Player) => p.Hands.some(c => c.CardId == data.winCard.Id));
-      if(winner) {
-        const winnerData: WinnerRound = {
-          winnerCard: data.winCard,
-          currentPlayer: this.currentPlayer,
-          winner: winner,
-          roomId: this.roomId,
-          blackCards: this.blackCards,
-          currentBlackCard : this.currentBlackCard
-        }
-        socket.emit("winner", winnerData);
-        this.$router.push({name : 'round', params : { roomId : data.roomId}});
-      }
-    });
+    this.onBeforeNextRound();
+    this.onNextTurn();
+    console.log(this.socketId)
+    console.log(this.currentPlayer.IsJudge)
   },
   updated() {
-    socket.on("connect", () => {
-      const data = {
-        roomId : this.roomId
-      }
-      socket.emit('reconnect-player', data);
-    });
+    this.onReconnectPlayer();
+  },
+  beforeUnmount() {
+    console.log("Before dest");
+    this.onOffSocket();
+  },
+  beforeRouteLeave(to, from, next) {
+    console.log("Before leave");
+    this.onOffSocket();
+    next();
   },
   methods: {
     //Charge toutes les données de la partie
@@ -169,6 +163,10 @@ export default {
         console.error("Error fetching data", error);
       }
     },
+    onResetComponentState() {
+      this.playerTurnFinished = false;
+      this.timerCount = 10;
+    },
     onReconnectPlayer(){
       socket.on("connect", () => {
         const data = {
@@ -178,6 +176,7 @@ export default {
       });
     },
     startGame() {
+      console.log("Start game")
       socket.on("game-started", (data: { game : Game, blackCards : Card[], blackCard : Card}) => {
         //Init des infos de la Game
         this.game = data.game;
@@ -192,9 +191,6 @@ export default {
           roomId : this.roomId
         }
         socket.emit("start-timer", dataTimer);
-
-        //On récupère toutes les données
-        this.fetchData();
       });
     },
     onCardsPlayed() {
@@ -210,11 +206,27 @@ export default {
         }
       });
     },
+    onBeforeNextRound() {
+      socket.on("round-room-joined", (data : { roomId : string, winnerCard : Card }) => {
+        const winner : Player | undefined = this.players.find((p : Player) => p.Hands.some(c => c.CardId == data.winnerCard.Id));
+        if(winner) {
+          const winnerData: WinnerRound = {
+            winnerCard: data.winnerCard,
+            currentPlayer: this.currentPlayer,
+            winner: winner,
+            roomId: this.roomId,
+            blackCards: this.blackCards,
+            currentBlackCard : this.currentBlackCard
+          }
+          socket.emit("winner", winnerData);
+          this.$router.push({name : 'round', params : { roomId : data.roomId, socketId : this.socketId}});
+        }
+      });
+    },
     //Carte selectionnée du joueur
     cardSelected(card: Card) {
       this.chosenCard = card;
     },
-
     //Confirmer la carte selectionnée
     confirmCardPlayed() {
       const data = {
@@ -235,12 +247,50 @@ export default {
     //Confimer la carte que le juge a selectionne
     //Met à joueur le score et le statut du gagnant
     confirmWinCard() {
-      const data = {
-        roomId : this.roomId,
-        winCard : this.winCard,
-        blackCard : this.currentBlackCard
-      };
-      socket.emit("join-round-room", data);
+      const id = this.winCard.Id
+      const winner : Player | undefined = this.players.find((p : Player) => p.Hands.some(c => c.CardId == id));
+      if(winner) {
+        const winnerData: WinnerRound = {
+          winnerCard: this.winCard,
+          currentPlayer: this.currentPlayer,
+          winner: winner,
+          roomId: this.roomId,
+          blackCards: this.blackCards,
+          currentBlackCard: this.currentBlackCard
+        }
+        socket.emit("join-round-room", winnerData);
+      }
+    },
+    onNextTurn(){
+      socket.on("new-turn", (data: { blackCards : Card[], blackCard : Card}) => {
+        //Init des infos de la Game
+        this.blackCards = data.blackCards;
+        this.currentBlackCard = data.blackCard;
+        this.onResetComponentState();
+        localStorage.setItem('current-black-card', JSON.stringify(this.currentBlackCard));
+        localStorage.setItem('black-cards', JSON.stringify(this.blackCards));
+
+        //Init du timer
+        const dataTimer = {
+          timer : this.timerCount,
+          roomId : this.roomId
+        }
+
+        socket.emit("start-timer", dataTimer);
+      });
+    },
+    onOffSocket(){
+      socket.off("game-started");
+      socket.off("cards-played");
+      socket.off("timer-update");
+      socket.off("round-room-joined");
+      socket.off("new-turn");
+      this.playerTurnFinished = false;
+    },
+    onDisconnect(){
+      this.onOffSocket();
+      socket.disconnect();
+      this.$router.push('/');
     }
   },
 }
@@ -285,7 +335,6 @@ export default {
   .game-board-cards-fix{
     display: flex;
     justify-content: space-between;
-    align-items: center;
     overflow-x: auto;
 
     > * {
@@ -303,8 +352,22 @@ export default {
     }
   }
 
+  .card-chosen{
+    display: flex;
+    flex-direction: column;
+  }
+
   .score-tab{
     width: 20%;
+  }
+
+  .btn-valid{
+    margin-top: 0.5rem;
+    background-color: transparent;
+    border: solid var(--color-background-ter-game) 2px;
+    border-radius: 5px;
+    padding: 15px 35px 15px 35px;
+    color: var(--color-background-ter-game);
   }
 }
 
@@ -316,6 +379,7 @@ export default {
     display: flex;
     align-items: center;
     margin-top: 1rem;
+    overflow-x: auto;
     border: 4px solid var(--color-background-ter-game);
     border-radius: 10px;
     width: 100%;

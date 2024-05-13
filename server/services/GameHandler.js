@@ -51,14 +51,8 @@ async function getCardsPlayed(io, socket ,data) {
     io.to(data.roomId).emit("cards-played", data);
 }
 
-async function manageWinner(io, socket ,data){
-    console.log("*****Winner INFO*******", data);
-    //await updateWinner(data);
-    //await updateJudge(data);
-    io.to(data.roomId).emit("winner-info", data);
-}
-
 async function startTimer(io, socket, data){
+    console.log("DATA", data);
     setTimeout(() => {
         if(data.timer > 0){
             data.timer--;
@@ -79,14 +73,16 @@ async function generateBlackCard(blackCards) {
 }
 
 async function joinRoundRoom(io, socket, data) {
-    console.log("DATA£££", data)
+    await updateWinner(data);
+    await updateJudge(data);
     io.to(data.roomId).emit("round-room-joined", data);
 }
 
 async function updateWinner(data){
     const player = await getPlayerByCardId(data);
-    const scorePlayer = player.Score = 50;
-    player.set({ Score : scorePlayer, IsJudge : 1 });
+    const scorePlayer = player.Score + 50;
+    player.set({ Score : scorePlayer});
+    player.set({ IsJudge : true});
     await player.save();
 }
 
@@ -111,20 +107,33 @@ async function displayWinner(io, socket, data){
 }
 
 async function updateRound(io, socket, data) {
-    await updateWinner(data);
-    await updateJudge(data);
     const roundData = false;
-    console.log("Data", roundData);
     setTimeout(() => {
         io.to(data.roomId).emit("round-updated", roundData);
-    }, 4000);
+    }, 2000);
+}
+
+async function nextRound(roomId) {
+    try{
+        const game = await Game.findOne({where : {RoomId : roomId}});
+        const turnId = game.CurrentTurnId + 1;
+        game.set({ CurrentTurnId : turnId});
+        await game.save();
+    }
+    catch (error) {
+        console.error("Error updating the game:", error);
+    }
 }
 
 async function nextTurn(io, socket, data) {
-    data.timer = 5;
-    let blackCardData = await generateBlackCard(data.blackCards);
-    await startTimer(io, socket, data);
-    io.to(data.roomId).emit("new-turn", blackCardData);
+    const blackCardsUpdated = await generateBlackCard(data.blackCards);
+    const updateGame = await nextRound(data.roomId);
+    const dataGame = {
+        game : updateGame,
+        blackCards : blackCardsUpdated.blackCards,
+        blackCard : blackCardsUpdated.blackCard
+    }
+    io.to(data.roomId).emit("new-turn", dataGame);
 }
 
-module.exports = {manageWinner,startGame, getCardsPlayed, startTimer, nextTurn, joinRoundRoom, displayWinner, updateRound};
+module.exports = {startGame, getCardsPlayed, startTimer, nextTurn, joinRoundRoom, displayWinner, updateRound};

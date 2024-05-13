@@ -1,6 +1,6 @@
 const { Server } = require('socket.io');
 const { createGame, joinGame, redirectPlayer } = require('./LobbyHandler');
-const { startGame, getCardsPlayed, manageWinner, startTimer, nextTurn, joinRoundRoom, displayWinner, updateRound } = require('./GameHandler');
+const { startGame, getCardsPlayed, startTimer, nextTurn, joinRoundRoom, displayWinner, updateRound } = require('./GameHandler');
 const { reconnectPlayer } = require('./SocketHandler');
 function initializeSocketIO(server){
     const io = new Server(server, {
@@ -25,11 +25,10 @@ function initializeSocketIO(server){
         socket.on("card-played", async (data) => {await getCardsPlayed(io, socket, data)});
         socket.on("start-timer", async (data) => {await startTimer(io, socket, data)});
         socket.on("reconnect-player", async (data) => {await reconnectPlayer(io, socket, data)});
-        socket.on("next-turn", async (data) => {await nextTurn(io, socket, data)});
         socket.on("join-round-room", async (data) => {await joinRoundRoom(io, socket, data)});
-        socket.on("win-card", async (data) => {await manageWinner(io, socket, data)});
         socket.on("winner", async (data) => {await displayWinner(io, socket, data)});
         socket.on("update-round", async (data) => {await updateRound(io, socket, data)});
+        socket.on("next-turn", async (data) => {await nextTurn(io, socket, data)});
     }
     io.on("connection", onConnection);
 }

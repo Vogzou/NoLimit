@@ -15,8 +15,10 @@ const props = defineProps<{
 
 .white-card {
   background-color: #FFFFFF;
-  height: 240px;
-  width: 180px;
+  max-height: 240px;
+  min-height: 240px;
+  min-width: 190px;
+  max-width: 190px;
   border-radius: 10px;
   transform: translateY(0);
   transition: ease-out 0.2s;

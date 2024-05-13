@@ -10,7 +10,8 @@
 .black-card {
   background-color: black;
   height: 300px;
-  width: 240px;
+  min-width: 220px;
+  max-width: 220px;
   border-radius: 10px;
 }
 
